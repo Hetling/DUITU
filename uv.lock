@@ -203,7 +203,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "ruff", specifier = ">=0.11.2" },
-    { name = "torch", specifier = ">=2.6.0" },
+    { name = "torch", specifier = "==2.6.0" },
 ]
 
 [[package]]
