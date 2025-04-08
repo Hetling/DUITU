@@ -6,12 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import numpy as np
 
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-data_dir = os.path.join(script_dir, '../data')
-
-print('importing from ', script_dir)
-print('data_dir is ', data_dir)
 class CustomImageDataset(Dataset):
     def __init__(self, images_dir, labels_dir, class_dict_csv, transform=None):
         """
@@ -101,6 +95,11 @@ def show_image_and_label(image, label):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     # Define the transformations
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(script_dir, '../data')
+
+    print('importing from ', script_dir)
+    print('data_dir is ', data_dir)
     transform = transforms.Compose([
         transforms.Resize((256, 256)),   # Resize to a standard size (optional)
         transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
