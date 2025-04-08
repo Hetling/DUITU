@@ -1,17 +1,16 @@
 import os
 import pandas as pd
 from PIL import Image
+from visualisations import show_image_and_label
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-import numpy as np
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, '../data')
 
-print('importing from ', script_dir)
-print('data_dir is ', data_dir)
+import numpy as np
+
 class CustomImageDataset(Dataset):
     def __init__(self, images_dir, labels_dir, class_dict_csv, transform=None):
         """
@@ -85,65 +84,56 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-            
+def get_dataloaders(batch_size=32):
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+    
+    train_dataset = CustomImageDataset(
+        images_dir=os.path.join(data_dir, 'train'),
+        labels_dir=os.path.join(data_dir, 'train_labels'),
+        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        transform=transform
+    )
 
+    val_dataset = CustomImageDataset(
+        images_dir=os.path.join(data_dir, 'val'),
+        labels_dir=os.path.join(data_dir, 'val_labels'),
+        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        transform=transform
+    )
 
-# Define the transformations
-transform = transforms.Compose([
-    transforms.Resize((256, 256)),   # Resize to a standard size (optional)
-    transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
-])
+    test_dataset = CustomImageDataset(
+        images_dir=os.path.join(data_dir, 'test'),
+        labels_dir=os.path.join(data_dir, 'test_labels'),
+        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        transform=transform
+    )
 
-# Create datasets for train, validation, and test
-train_dataset = CustomImageDataset(
-    images_dir=os.path.join(data_dir, 'train'),
-    labels_dir=os.path.join(data_dir, 'train_labels'),
-    class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
-    transform=transform
-)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    
+    return train_loader, val_loader, test_loader, train_dataset.class_dict
 
-val_dataset = CustomImageDataset(
-    images_dir=os.path.join(data_dir, 'val'),
-    labels_dir=os.path.join(data_dir, 'val_labels'),
-    class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
-    transform=transform
-)
+if __name__ == "__main__":
+    print('Loading datasets...')
+    train_loader, val_loader, test_loader, class_dict = get_dataloaders()
+    print('Datasets loaded.')
+    print('Number of training samples:', len(train_loader.dataset))
+    print('Number of validation samples:', len(val_loader.dataset))
+    print('Number of test samples:', len(test_loader.dataset))
+    print('Class dictionary:')
+    print(class_dict)
 
-test_dataset = CustomImageDataset(
-    images_dir=os.path.join(data_dir, 'test'),
-    labels_dir=os.path.join(data_dir, 'test_labels'),
-    class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
-    transform=transform
-)
-
-# Create DataLoader objects
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-
-
-
-#show the first image and label
-import matplotlib.pyplot as plt
-x,y = next(iter(train_loader))
-def show_image_and_label(image, label):
-    print('Image shape:', image.shape)
-    print('Label shape:', label.shape)
-    plt.subplot(1, 2, 1)
-    plt.imshow(image.permute(1, 2, 0))  # Convert from (C, H, W) to (H, W, C)
-    plt.title('Image')
-    plt.axis('off')
-
-    #show the label
-    plt.subplot(1, 2, 2)
-    plt.imshow(label[0], cmap='gray')  # Assuming label is a single channel
-    plt.show()
-show_image_and_label(x[0],y[0])
-#id of left most corner pixel
-print('left most corner pixel id:', y[0][0][0][0])
-#print the name of the class
-class_id = y[0][0][255][255].item()
-class_name = train_dataset.class_dict.iloc[class_id]['name']
-print('class name:', class_name)
-
-unique_class_ids = torch.unique(y)
+    # Show an example image and its label
+    print('Showing an example image and its label...')
+    x,y = next(iter(train_loader))
+    show_image_and_label(x[0],y[0])
+    #id of left most corner pixel
+    print('left most corner pixel id:', y[0][0][0][0])
+    #print the name of the class
+    class_id = y[0][0][0][0].item()
+    class_name = class_dict.iloc[class_id]['name']
+    print('class name:', class_name)
