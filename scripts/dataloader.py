@@ -84,16 +84,11 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-
-if __name__ == "__main__":
-    print('Loading datasets...')
-    # Define the transformations
+def get_dataloaders(batch_size=32):
     transform = transforms.Compose([
-        transforms.Resize((256, 256)),   # Resize to a standard size (optional)
-        transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
     ])
-
-    # Create datasets for train, validation, and test
     
     train_dataset = CustomImageDataset(
         images_dir=os.path.join(data_dir, 'train'),
@@ -116,18 +111,29 @@ if __name__ == "__main__":
         transform=transform
     )
 
-    # Create DataLoader objects
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    
+    return train_loader, val_loader, test_loader, train_dataset.class_dict
 
+if __name__ == "__main__":
+    print('Loading datasets...')
+    train_loader, val_loader, test_loader, class_dict = get_dataloaders()
+    print('Datasets loaded.')
+    print('Number of training samples:', len(train_loader.dataset))
+    print('Number of validation samples:', len(val_loader.dataset))
+    print('Number of test samples:', len(test_loader.dataset))
+    print('Class dictionary:')
+    print(class_dict)
 
-
+    # Show an example image and its label
+    print('Showing an example image and its label...')
     x,y = next(iter(train_loader))
     show_image_and_label(x[0],y[0])
     #id of left most corner pixel
     print('left most corner pixel id:', y[0][0][0][0])
     #print the name of the class
     class_id = y[0][0][0][0].item()
-    class_name = train_dataset.class_dict.iloc[class_id]['name']
+    class_name = class_dict.iloc[class_id]['name']
     print('class name:', class_name)
