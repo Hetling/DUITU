@@ -22,6 +22,7 @@ sys.path.append(duitu_root)
 print('importing from ', script_dir)
 print('data_dir is ', data_dir)
 from models.Unet import UNet
+from scripts.dataloader import get_dataloaders
 
 transform = transforms.Compose([
         transforms.Resize((256, 256)),   # Resize to a standard size (optional)
@@ -50,15 +51,12 @@ test_dataset = CustomImageDataset(
     transform=transform
 )
 
-# Create DataLoader objects
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+train_loader, val_loader, test_loader, class_dict = get_dataloaders()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = UNet(in_channels=3, dimensions=32)
+model = UNet(in_channels=3, num_classes=32)
 
-criterion = nn.CrossEntropyLoss()  # suitable for multi-class segmentation
+criterion = nn.BCEWithLogitsLoss() # suitable for multi-class segmentation
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
@@ -77,11 +75,13 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         # Training loop
         for images, masks in tqdm(train_loader, desc="Training"):
             images = images.to(device)
-            masks = masks.to(device).squeeze(1).long() 
+            masks = masks.to(device).float() 
+            print(f"images shape: {images.shape}")
+            print(f"masks shape: {masks.shape}")
 
             optimizer.zero_grad()
             outputs = model(images)  # [B, C, H, W]
-            loss = criterion(outputs, masks)  # [B, H, W]
+            loss = criterion(outputs, masks)  # [B, C, H, W]
             loss.backward()
             optimizer.step()
 
@@ -97,7 +97,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         with torch.no_grad():
             for images, masks in tqdm(val_loader, desc="Validating"):
                 images = images.to(device)
-                masks = masks.to(device).long()
+                masks = masks.to(device).float()
                 outputs = model(images)
                 loss = criterion(outputs, masks)
                 val_loss += loss.item()
