@@ -1,7 +1,3 @@
-# https://github.com/clemkoa/u-net/tree/master THis part is based on the original U-Net from this paper
-# We will have made some modifications for our use case, but used this as a boilerplate
-# This model is based on the original U-Net from Ronnenberg https://arxiv.org/abs/1505.04597
-
 import copy
 import os
 import random
@@ -15,15 +11,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-from PIL import Image
-from numpy import linalg as LA
-from torch import optim, nn
-from torch.utils.data import DataLoader, random_split
-from torch.utils.data.dataset import Dataset
-from torchvision import transforms
-from tqdm import tqdm
-
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
