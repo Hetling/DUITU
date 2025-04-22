@@ -5,6 +5,7 @@ from visualisations import show_image_and_label
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+import torch.nn.functional as F
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, '../data')
@@ -50,12 +51,19 @@ class CustomImageDataset(Dataset):
 
         # Convert the label back to a PIL image (needed for transforms)
         label = Image.fromarray(label)
+        
 
         # Apply the transform (resize, ToTensor, etc.) if specified
         if self.transform:
             image = self.transform(image)
             label = self.transform(label)
-
+            
+        label = label.squeeze(0).long()  # shape: [H, W]
+        label = F.one_hot(label, num_classes=len(self.class_mapping.keys()))  # shape: [H, W, num_classes]
+        label = label.permute(2, 0, 1).float()  # shape: [num_classes, H, W]
+        
+        
+        
         return image, label
 
     def _rgb_to_class_id(self, rgb_array):
@@ -130,10 +138,17 @@ if __name__ == "__main__":
     # Show an example image and its label
     print('Showing an example image and its label...')
     x,y = next(iter(train_loader))
-    show_image_and_label(x[0],y[0])
+    show_image_and_label(x[0],y[0], 17)
     #id of left most corner pixel
     print('left most corner pixel id:', y[0][0][0][0])
     #print the name of the class
-    class_id = y[0][0][0][0].item()
+    class_id = torch.argmax(y[0, :, 0, 0]).item()
+
+    # Look up the class name
     class_name = class_dict.iloc[class_id]['name']
+
     print('class name:', class_name)
+    print('Label image shape:', y.shape)  # Should print: torch.Size([1, 32, 256, 256])
+    print(y[0])  # One-hot encoded tensor
+
+    
