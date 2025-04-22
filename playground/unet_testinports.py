@@ -1,16 +1,10 @@
 import torch
 import torch.optim as optim
-from pathlib import Path
 from torch import nn
 import os
-from PIL import Image
-import numpy as np
-import pandas as pd
-from diffusers import AutoPipelineForText2Image
 import torch
 from testimports import CustomImageDataset
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
 import sys
 from tqdm import tqdm
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +22,10 @@ transform = transforms.Compose([
         transforms.Resize((256, 256)),   # Resize to a standard size (optional)
         transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
     ])
-
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+    print(f"Model saved to {path}")
+    
 # Create datasets for train, validation, and test
 train_dataset = CustomImageDataset(
     images_dir=os.path.join(data_dir, 'train'),
@@ -75,9 +72,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         # Training loop
         for images, masks in tqdm(train_loader, desc="Training"):
             images = images.to(device)
-            masks = masks.to(device).float() 
-            print(f"images shape: {images.shape}")
-            print(f"masks shape: {masks.shape}")
+            masks = masks.to(device).float()
 
             optimizer.zero_grad()
             outputs = model(images)  # [B, C, H, W]
@@ -86,6 +81,11 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
             optimizer.step()
 
             running_loss += loss.item()
+            # save model here
+            save_model_path = os.path.join(script_dir, 'unet_model.pth')
+            save_model(model, save_model_path)
+        
+            
 
         avg_train_loss = running_loss / len(train_loader)
         print(f"📊 Average Training Loss: {avg_train_loss:.4f}")
@@ -106,9 +106,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         print(f"🧪 Average Validation Loss: {avg_val_loss:.4f}")
         
 # save model
-def save_model(model, path):
-    torch.save(model.state_dict(), path)
-    print(f"Model saved to {path}")
+
     
 save_model_path = os.path.join(script_dir, 'unet_model.pth')
 if os.path.exists(save_model_path):

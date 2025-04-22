@@ -23,6 +23,9 @@ from torch.utils.data import DataLoader, random_split
 from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from tqdm import tqdm
+# seed
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
 
 
 class DoubleConv(nn.Module):
