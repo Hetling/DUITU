@@ -1,12 +1,6 @@
-# https://github.com/clemkoa/u-net/tree/master THis part is based on the original U-Net from this paper
-# We will have made some modifications for our use case, but used this as a boilerplate
-# This model is based on the original U-Net from Ronnenberg https://arxiv.org/abs/1505.04597
-
 import torch
 from torch import nn
 import torch.nn.functional as F
-
-
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(DoubleConv, self).__init__()
