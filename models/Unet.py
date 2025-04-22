@@ -1,7 +1,3 @@
-# https://github.com/clemkoa/u-net/tree/master THis part is based on the original U-Net from this paper
-# We will have made some modifications for our use case, but used this as a boilerplate
-# This model is based on the original U-Net from Ronnenberg https://arxiv.org/abs/1505.04597
-
 import copy
 import os
 import random
