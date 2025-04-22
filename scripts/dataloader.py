@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 from PIL import Image
-from visualisations import show_image_and_label
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -68,7 +67,7 @@ class CustomImageDataset(Dataset):
 
     def _rgb_to_class_id(self, rgb_array):
         """
-        Convert RGB values in the label image to class IDs.
+        Convert RGB v alues in the label image to class IDs.
         Assumes RGB is mapped to class IDs in the class_dict.
         """
         class_id_map = np.zeros(rgb_array.shape[:2], dtype=np.int32)  # Use int32 for whole integers
@@ -92,7 +91,7 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-def get_dataloaders(batch_size=32):
+def get_dataloaders(batch_size=4):
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
@@ -126,6 +125,7 @@ def get_dataloaders(batch_size=32):
     return train_loader, val_loader, test_loader, train_dataset.class_dict
 
 if __name__ == "__main__":
+    from visualisations import show_image_and_label 
     print('Loading datasets...')
     train_loader, val_loader, test_loader, class_dict = get_dataloaders()
     print('Datasets loaded.')
@@ -148,7 +148,8 @@ if __name__ == "__main__":
     class_name = class_dict.iloc[class_id]['name']
 
     print('class name:', class_name)
-    print('Label image shape:', y.shape)  # Should print: torch.Size([1, 32, 256, 256])
+    print('Label image shape:', y.shape)  # Should print: torch.Size([32, 32, 256, 256]) (batch_size, num_classes, height, width)
+    print('Unique class IDs in the label:', torch.unique(y[0]))  # Unique class IDs in the first imageuv
     print(y[0])  # One-hot encoded tensor
 
     
