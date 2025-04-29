@@ -1,34 +1,33 @@
 import torch
 import torch.optim as optim
-from pathlib import Path
 from torch import nn
 import os
-from PIL import Image
-import numpy as np
-import pandas as pd
+
 import torch
 from testimports import CustomImageDataset
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
 import sys
 from tqdm import tqdm
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, '../data')
 duitu_root = os.path.abspath(os.path.join(script_dir, ".."))
 
 # Add DUITU to the Python path
 sys.path.append(duitu_root)
-print('importing from ', script_dir)
-print('data_dir is ', data_dir)
 from models.Unet import UNet
 from scripts.dataloader import get_dataloaders
 
-transform = transforms.Compose([
-        transforms.Resize((256, 256)),   # Resize to a standard size (optional)
-        transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
-    ])
+# Enable cuDNN benchmark
+torch.backends.cudnn.benchmark = True
 
-# Create datasets for train, validation, and test
+# Enhanced transformations
+transform = transforms.Compose([
+    transforms.Resize((256, 256)),
+    transforms.ToTensor(),
+])
+
+# Create datasets
 train_dataset = CustomImageDataset(
     images_dir=os.path.join(data_dir, 'train'),
     labels_dir=os.path.join(data_dir, 'train_labels'),
@@ -36,75 +35,77 @@ train_dataset = CustomImageDataset(
     transform=transform
 )
 
-val_dataset = CustomImageDataset(
-    images_dir=os.path.join(data_dir, 'val'),
-    labels_dir=os.path.join(data_dir, 'val_labels'),
-    class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
-    transform=transform
-)
 
-test_dataset = CustomImageDataset(
-    images_dir=os.path.join(data_dir, 'test'),
-    labels_dir=os.path.join(data_dir, 'test_labels'),
-    class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
-    transform=transform
-)
 
+# Optimized DataLoader config
 train_loader, val_loader, test_loader, class_dict = get_dataloaders()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps")
 model = UNet(in_channels=3, num_classes=32)
 
-criterion = nn.BCEWithLogitsLoss() # suitable for multi-class segmentation
+# Use smaller bottleneck in UNet (modify your UNet class)
+# Original: self.bottle_neck = DoubleConv(512, 1024)
+# Change to: self.bottle_neck = DoubleConv(512, 512)
+
+criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-
-
-# AI SLOP
 
 def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10):
     model.to(device)
-    
-    for epoch in range(epochs):
+
+    epoch_loop = tqdm(range(epochs), desc="🔁 Epochs", bar_format="{l_bar}{bar} | Epoch {n_fmt}/{total_fmt} | Elapsed: {elapsed} | Remaining: {remaining}")
+    for epoch in epoch_loop:
         model.train()
         running_loss = 0.0
 
-        print(f"\n🔁 Epoch {epoch + 1}/{epochs}")
-
         # Training loop
-        for images, masks in tqdm(train_loader, desc="Training"):
-            images = images.to(device)
-            masks = masks.to(device).float() 
-            print(f"images shape: {images.shape}")
-            print(f"masks shape: {masks.shape}")
+        early_stopping_counter = 0
+        train_loop = tqdm(train_loader, desc=f"📊 Training.     Current loss: {running_loss} ", leave=False, 
+                     bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} batches | Elapsed: {elapsed} | Remaining: {remaining}")
+        for images, masks in train_loop:
+                
+            # Faster data transfer
+            images = images.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True).float()
 
-            optimizer.zero_grad()
-            outputs = model(images)  # [B, C, H, W]
-            loss = criterion(outputs, masks)  # [B, C, H, W]
+            optimizer.zero_grad(set_to_none=True)  # More efficient
+            
+            outputs = model(images)
+            loss = criterion(outputs, masks)
+            
+            # Backpropagation
             loss.backward()
             optimizer.step()
-
             running_loss += loss.item()
-
-        avg_train_loss = running_loss / len(train_loader)
-        print(f"📊 Average Training Loss: {avg_train_loss:.4f}")
+            early_stopping_counter += 1
+            train_loop.set_description(f"📊 Training. Current Avg. loss: {(running_loss / early_stopping_counter):.4f}")
 
         # Validation
         model.eval()
         val_loss = 0.0
 
         with torch.no_grad():
-            for images, masks in tqdm(val_loader, desc="Validating"):
-                images = images.to(device)
-                masks = masks.to(device).float()
+            early_stopping_counter = 0
+            val_loop = tqdm(val_loader, desc="Validating", leave=False,
+                       bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} batches | Elapsed: {elapsed} | Remaining: {remaining}")
+            for images, masks in val_loop:
+                # if early_stopping_counter > 5:
+                #     print("Early stopping triggered.")
+                #     break
+                images = images.to(device, non_blocking=True)
+                masks = masks.to(device, non_blocking=True).float()
                 outputs = model(images)
                 loss = criterion(outputs, masks)
                 val_loss += loss.item()
+                early_stopping_counter += 1
 
-        avg_val_loss = val_loss / len(val_loader)
-        print(f"🧪 Average Validation Loss: {avg_val_loss:.4f}")
+                val_loop.set_description(f"Validating. Current Avg. loss: {(val_loss / early_stopping_counter):.4f}")
+
+        # Print epoch results
+        epoch_loop.write(f"Epoch {epoch + 1}/{epochs} - Training Loss: {running_loss / len(train_loader):.4f} - Validation Loss: {val_loss / len(val_loader):.4f}")
         
-# save model
+
+# Save/load model
 def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
@@ -112,10 +113,51 @@ def save_model(model, path):
 save_model_path = os.path.join(script_dir, 'unet_model.pth')
 if os.path.exists(save_model_path):
     print("Loading existing trained model...")
-    model.load_state_dict(torch.load(save_model_path, map_location=device))
+    model.load_state_dict(torch.load(save_model_path))
+
+    #predict image and display besides original mask
+    for i in range(len(test_loader.dataset)):
+        print("Image", i)
+        print("Image shape:", test_loader.dataset[i][0].shape)
+        print("Mask shape:", test_loader.dataset[i][1].shape)
+        model.to(device)  # Ensure the model is on the correct device
+        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.float))
+
+        # Set the most likely class for each pixel
+        predicted_mask = torch.argmax(y_pred, dim=1).squeeze(0).cpu().detach().numpy()
+
+        # Convert predicted mask to RGB
+        rgb_predicted_mask = train_dataset.class_id_to_rgb(predicted_mask)
+
+        # Get the ground truth mask
+        ground_truth_mask = torch.argmax(test_loader.dataset[i][1], dim=0).cpu().detach().numpy()
+        rgb_ground_truth_mask = train_dataset.class_id_to_rgb(ground_truth_mask)
+
+        # Print shapes for debugging
+        print("Predicted mask shape:", predicted_mask.shape)
+        print("RGB Predicted mask shape:", rgb_predicted_mask.shape)
+        print("Ground truth mask shape:", ground_truth_mask.shape)
+        print("RGB Ground truth mask shape:", rgb_ground_truth_mask.shape)
+
+        # Display the images
+        import matplotlib.pyplot as plt
+
+
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 3, 1)
+        plt.imshow(test_loader.dataset[i][0].cpu().numpy().transpose(1, 2, 0))
+        plt.title("Original Image")
+        plt.axis("off")
+        plt.subplot(1, 3, 2)
+        plt.imshow(rgb_ground_truth_mask)
+        plt.title("Ground Truth Mask")
+        plt.axis("off")
+        plt.subplot(1, 3, 3)
+        plt.imshow(rgb_predicted_mask)
+        plt.title("Predicted Mask")
+        plt.axis("off")
+        plt.show()
 else:
     print("Training model...")
-    # Train the model
-    train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10)
+    train(model, train_loader, val_loader, criterion, optimizer, device, epochs=3)
 save_model(model, save_model_path)
-

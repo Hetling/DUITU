@@ -67,7 +67,7 @@ class CustomImageDataset(Dataset):
 
         return class_id_map
     
-    def _class_id_to_rgb(self, class_id_array):
+    def class_id_to_rgb(self, class_id_array):
         """
         Convert class IDs back to RGB values.
         This is optional and can be used for visualization.
