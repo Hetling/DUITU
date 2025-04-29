@@ -159,5 +159,5 @@ if os.path.exists(save_model_path):
         plt.show()
 else:
     print("Training model...")
-    train(model, train_loader, val_loader, criterion, optimizer, device, epochs=3)
+    train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10)
 save_model(model, save_model_path)
