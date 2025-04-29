@@ -2,6 +2,9 @@ import torch
 import torch.optim as optim
 from torch import nn
 import os
+from PIL import Image
+import numpy as np
+import pandas as pd
 import torch
 from testimports import CustomImageDataset
 from torchvision import transforms
