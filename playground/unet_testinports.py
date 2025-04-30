@@ -21,11 +21,14 @@ torch.backends.cudnn.benchmark = True
 
 # Enhanced transformations
 transform = transforms.Compose([
-    transforms.Resize((256, 256)),
-    transforms.ToTensor(),
-])
-
-# Create datasets
+        transforms.Resize((256, 256)),   # Resize to a standard size (optional)
+        transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
+    ])
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+    print(f"Model saved to {path}")
+    
+# Create datasets for train, validation, and test
 train_dataset = CustomImageDataset(
     images_dir=os.path.join(data_dir, 'train'),
     labels_dir=os.path.join(data_dir, 'train_labels'),
