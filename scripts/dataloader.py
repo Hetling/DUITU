@@ -91,7 +91,7 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-def get_dataloaders(batch_size=4):
+def get_dataloaders(batch_size=4, pin_memory=True):
 
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
@@ -122,15 +122,16 @@ def get_dataloaders(batch_size=4):
         transform=transform
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
     
     return train_loader, val_loader, test_loader, train_dataset.class_dict
 
 if __name__ == "__main__":
     from visualisations import show_image_and_label 
     print('Loading datasets...')
+
     train_loader, val_loader, test_loader, class_dict = get_dataloaders()
     print('Datasets loaded.')
     print('Number of training samples:', len(train_loader.dataset))
