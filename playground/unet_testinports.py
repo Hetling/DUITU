@@ -108,11 +108,61 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
 def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
-
 save_model_path = os.path.join(script_dir, 'unet_model.pth')
+
+testing = True
+if testing:
+    print(device)
+    model.load_state_dict(torch.load(save_model_path, map_location=device))
+
+    #predict image and display besides original mask
+    for i in range(len(test_loader.dataset)):
+        print("Image", i)
+        print("Image shape:", test_loader.dataset[i][0].shape)
+        print("Mask shape:", test_loader.dataset[i][1].shape)
+        model.to(device)  # Ensure the model is on the correct device
+        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.float))
+
+        # Set the most likely class for each pixel
+        predicted_mask = torch.argmax(y_pred, dim=1).squeeze(0).cpu().detach().numpy()
+
+        # Convert predicted mask to RGB
+        rgb_predicted_mask = train_dataset.class_id_to_rgb(predicted_mask)
+
+        # Get the ground truth mask
+        ground_truth_mask = torch.argmax(test_loader.dataset[i][1], dim=0).cpu().detach().numpy()
+        rgb_ground_truth_mask = train_dataset.class_id_to_rgb(ground_truth_mask)
+
+        # Print shapes for debugging
+        print("Predicted mask shape:", predicted_mask.shape)
+        print("RGB Predicted mask shape:", rgb_predicted_mask.shape)
+        print("Ground truth mask shape:", ground_truth_mask.shape)
+        print("RGB Ground truth mask shape:", rgb_ground_truth_mask.shape)
+
+        # Display the images
+        import matplotlib.pyplot as plt
+
+
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 3, 1)
+        plt.imshow(test_loader.dataset[i][0].cpu().numpy().transpose(1, 2, 0))
+        plt.title("Original Image")
+        plt.axis("off")
+        plt.subplot(1, 3, 2)
+        plt.imshow(rgb_ground_truth_mask)
+        plt.title("Ground Truth Mask")
+        plt.axis("off")
+        plt.subplot(1, 3, 3)
+        plt.imshow(rgb_predicted_mask)
+        plt.title("Predicted Mask")
+        plt.axis("off")
+        plt.show()
+
+    quit()
+
 if os.path.exists(save_model_path):
     print("Loading existing trained model...")
-    model.load_state_dict(torch.load(save_model_path))
+    model.load_state_dict(torch.load(save_model_path, map_location=device))
     train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10)
 else:
     print("Training model...")

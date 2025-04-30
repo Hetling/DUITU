@@ -95,9 +95,6 @@ def get_dataloaders(batch_size=4, pin_memory=True):
 
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
-        transforms.RandomVerticalFlip(),
-        transforms.RandomHorizontalFlip(),
-        transforms.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
         transforms.ToTensor(),
     ])
     
