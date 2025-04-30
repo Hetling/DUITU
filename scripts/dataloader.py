@@ -91,7 +91,7 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-def get_dataloaders(batch_size=4):
+def get_dataloaders(batch_size=4, limit=None):
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
@@ -117,12 +117,17 @@ def get_dataloaders(batch_size=4):
         class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
         transform=transform
     )
+    if limit:
+        train_dataset.image_filenames = train_dataset.image_filenames[:limit]
+        val_dataset.image_filenames = val_dataset.image_filenames[:limit]
+        test_dataset.image_filenames = test_dataset.image_filenames[:limit]
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
     return train_loader, val_loader, test_loader, train_dataset.class_dict
+
 
 if __name__ == "__main__":
     from visualisations import show_image_and_label 

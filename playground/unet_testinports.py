@@ -41,10 +41,10 @@ def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
 
-save_model_path = os.path.join(script_dir, 'unet7Kernelsize_model.pth')
+save_model_path = os.path.join(script_dir, 'unet7Kernelsize_model_attempt2.pth')
 
 # Optimized DataLoader config
-train_loader, val_loader, test_loader, class_dict = get_dataloaders()
+train_loader, val_loader, test_loader, class_dict = get_dataloaders(limit=10)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = UNetKernelSize(in_channels=3, num_classes=32, kernel_size = 7)
@@ -53,8 +53,11 @@ model = UNetKernelSize(in_channels=3, num_classes=32, kernel_size = 7)
 # Original: self.bottle_neck = DoubleConv(512, 1024)
 # Change to: self.bottle_neck = DoubleConv(512, 512)
 
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5)
+
+
 
 def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10):
     model.to(device)
@@ -85,6 +88,11 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
             running_loss += loss.item()
             early_stopping_counter += 1
             train_loop.set_description(f"📊 Training. Current Avg. loss: {(running_loss / early_stopping_counter):.4f}")
+            predicted_mask = torch.argmax(outputs, dim=1).squeeze(0).cpu().detach()
+            # print nuber of unique classes in predicted mask
+            unique_classes = torch.unique(predicted_mask)
+            print("Unique classes in predicted mask:", unique_classes)
+           
 
         # Validation
         model.eval()
@@ -111,7 +119,6 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         epoch_loop.write(f"Epoch {epoch + 1}/{epochs} - Training Loss: {running_loss / len(train_loader):.4f} - Validation Loss: {val_loss / len(val_loader):.4f}")
         
 
-
     
 
 if os.path.exists(save_model_path):
@@ -133,7 +140,8 @@ if os.path.exists(save_model_path):
         rgb_predicted_mask = train_dataset.class_id_to_rgb(predicted_mask)
 
         # Get the ground truth mask
-        ground_truth_mask = torch.argmax(test_loader.dataset[i][1], dim=0).cpu().detach().numpy()
+        ground_truth_mask = test_loader.dataset[i][1].cpu().detach().numpy()
+
         rgb_ground_truth_mask = train_dataset.class_id_to_rgb(ground_truth_mask)
 
         # Print shapes for debugging
