@@ -40,8 +40,25 @@ train_dataset = CustomImageDataset(
 def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
+    
+def compute_class_weights(dataset, num_classes):
+    print("Computing class weights...")
+    class_counts = torch.zeros(num_classes)
 
-save_model_path = os.path.join(script_dir, 'unet7Kernelsize_model_attempt2.pth')
+    for _, mask in tqdm(dataset):
+        # If mask is one-hot, reduce it
+        if mask.ndim == 3:
+            mask = torch.argmax(mask, dim=0)
+        unique, counts = torch.unique(mask, return_counts=True)
+        for u, c in zip(unique, counts):
+            class_counts[u] += c
+
+    weights = 1.0 / (class_counts + 1e-6)
+    weights = weights / weights.sum()
+    return weights
+
+
+save_model_path = os.path.join(script_dir, 'unet7Kernelsize_model_attempt3.pth')
 
 # Optimized DataLoader config
 train_loader, val_loader, test_loader, class_dict = get_dataloaders(limit=10)
@@ -52,10 +69,9 @@ model = UNetKernelSize(in_channels=3, num_classes=32, kernel_size = 7)
 # Use smaller bottleneck in UNet (modify your UNet class)
 # Original: self.bottle_neck = DoubleConv(512, 1024)
 # Change to: self.bottle_neck = DoubleConv(512, 512)
-
-criterion = nn.CrossEntropyLoss()
+weights = compute_class_weights(train_dataset, num_classes=32)
+criterion = nn.CrossEntropyLoss(weight=weights.to(device))
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5)
 
 
 
@@ -140,7 +156,7 @@ if os.path.exists(save_model_path):
         rgb_predicted_mask = train_dataset.class_id_to_rgb(predicted_mask)
 
         # Get the ground truth mask
-        ground_truth_mask = test_loader.dataset[i][1].cpu().detach().numpy()
+        ground_truth_mask = torch.argmax(test_loader.dataset[i][1], dim=0).cpu().detach().numpy()
 
         rgb_ground_truth_mask = train_dataset.class_id_to_rgb(ground_truth_mask)
 
