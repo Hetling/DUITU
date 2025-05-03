@@ -64,11 +64,10 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
                 optimizer.zero_grad(set_to_none=True)
 
                 # Mixed precision training
-                with torch.cuda.amp.autocast():
-                    outputs = model(images)
-                    loss = criterion(outputs, masks)
-                    loss.backward()
-                    optimizer.step()
+                outputs = model(images)
+                loss = criterion(outputs, masks)
+                loss.backward()
+                optimizer.step()
 
                 running_loss += loss.item()
                 train_loop.set_description(f"📊 Training. Current Avg. loss: {(running_loss / len(train_loader)):.4f}")
