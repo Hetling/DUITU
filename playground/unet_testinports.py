@@ -39,12 +39,12 @@ train_dataset = CustomImageDataset(
 # Optimized DataLoader config
 train_loader, val_loader, test_loader, class_dict = get_dataloaders(pin_memory=True)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 model = UNet(in_channels=3, num_classes=32).to(device)
 
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-scaler = torch.cuda.amp.GradScaler()  # For mixed precision training
+
 
 def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=10):
     model.to(device)
@@ -67,10 +67,8 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
                 with torch.cuda.amp.autocast():
                     outputs = model(images)
                     loss = criterion(outputs, masks)
-
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
+                    loss.backward()
+                    optimizer.step()
 
                 running_loss += loss.item()
                 train_loop.set_description(f"📊 Training. Current Avg. loss: {(running_loss / len(train_loader)):.4f}")
@@ -110,7 +108,7 @@ def save_model(model, path):
     print(f"Model saved to {path}")
 save_model_path = os.path.join(script_dir, 'unet_model.pth')
 
-testing = True
+testing = False
 if testing:
     print(device)
     model.load_state_dict(torch.load(save_model_path, map_location=device))
