@@ -39,7 +39,7 @@ def experiment(model, images_mask):
             outputs.append(y_pred)
             labels.append(output)
         
-    avg_time_per_sample = total_time / len(images_mask)
+    avg_time_per_sample = total_time / len(images_mask)  
     
 
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(in_channels=3, num_classes=32).to(device)
     model = load_model(model, os.path.join(script_dir, 'model.pth'))
-    images_mask = next(iter(test_loader))
+    images_mask = [next(iter(test_loader)) for _ in range(100)]
     experiment(model, images_mask)
 
 
