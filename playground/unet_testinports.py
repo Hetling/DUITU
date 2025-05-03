@@ -21,7 +21,7 @@ torch.backends.cudnn.benchmark = True
 
 # Enhanced transformations
 transform = transforms.Compose([
-        transforms.Resize((256, 256)),   # Resize to a standard size (optional)
+        transforms.Resize((572, 572)),   # Resize to match UNet's input size requirements
         transforms.ToTensor(),           # Convert to tensor (scale to [0, 1])
     ])
 def save_model(model, path):
@@ -82,7 +82,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
                     images = images.to(device, non_blocking=True)
                     masks = masks.to(device, non_blocking=True).float()
 
-                    with torch.cuda.amp.autocast():
+                    with torch.amp.autocast('cuda'):
                         outputs = model(images)
                         loss = criterion(outputs, masks)
 
@@ -97,11 +97,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
         except Exception as e:
             print(f"An error occurred: {e}")
             break
-        finally:
-            save_model(model, os.path.join(script_dir, 'unet_model.pth'))
-            print(f"Model saved after epoch {epoch + 1}")
 
-# Save/load model
 def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
