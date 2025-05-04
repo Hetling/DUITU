@@ -9,6 +9,7 @@ sys.path.append(duitu_root)
 from models.Unet import UNet
 from scripts.dataloader import get_dataloaders
 from tqdm import tqdm
+from scipy import stats
 
 #import cross_entropy_loss
 
@@ -36,6 +37,7 @@ def experiment(model, test_images, quantized=False):
     total_loss = 0
     outputs = []
     
+    timers = []
     with torch.no_grad():
 
         for i, (input, output) in tqdm(enumerate(test_images), total=100):
@@ -54,6 +56,7 @@ def experiment(model, test_images, quantized=False):
             y_pred, elapsed_time = infer(model, input, device)
             total_time += elapsed_time           
             outputs.append(y_pred)
+            timers.append(elapsed_time)
             # Ensure y_pred and output have the same dimensions
             loss = criterion(y_pred.squeeze(0), output)
             total_loss += loss.item()
@@ -63,11 +66,20 @@ def experiment(model, test_images, quantized=False):
     print(f"Average time per sample: {avg_time_per_sample:.4f} seconds")
     print(f"Average loss: {total_loss / len(test_images):.4f}")
         
-    avg_time_per_sample = total_time / len(images_mask)  
-    
+    avg_time_per_sample = total_time / len(images_mask) 
+ 
+    return avg_time_per_sample, total_loss / len(test_images), timers
 
 
+def t_test(timer1, timer2):
+    # Perform a t-test to compare the two sets of timers
 
+    t_stat, p_value = stats.ttest_ind(timer1, timer2)
+    print(f"T-statistic: {t_stat}, P-value: {p_value}")
+    if p_value < 0.05:
+        print("The difference is statistically significant.")
+    else:
+        print("The difference is not statistically significant.")
 
 
 if __name__ == "__main__":
