@@ -91,7 +91,7 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-def get_dataloaders(batch_size=4, pin_memory=True):
+def get_dataloaders(datadir, batch_size=4, pin_memory=True):
 
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
