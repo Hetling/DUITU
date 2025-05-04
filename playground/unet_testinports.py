@@ -39,10 +39,11 @@ train_dataset = CustomImageDataset(
 # Optimized DataLoader config
 train_loader, val_loader, test_loader, class_dict = get_dataloaders(pin_memory=True)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-model = UNet(in_channels=3, num_classes=32).to(device)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_classes = len(train_dataset.class_dict)
+model = UNet(in_channels=3, num_classes=num_classes).to(device)
 
-criterion = nn.BCEWithLogitsLoss()
+criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
@@ -101,7 +102,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
 def save_model(model, path):
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
-save_model_path = os.path.join(script_dir, 'unet_model.pth')
+save_model_path = os.path.join(script_dir, 'unet_model_reduced_classes.pth')
 
 testing = False
 if testing:
