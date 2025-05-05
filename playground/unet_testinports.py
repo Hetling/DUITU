@@ -15,6 +15,7 @@ duitu_root = os.path.abspath(os.path.join(script_dir, ".."))
 sys.path.append(duitu_root)
 from models.Unet import UNet
 from scripts.dataloader import get_dataloaders
+from models.UNetKernelSize import UNetKernelSize
 
 # Enable cuDNN benchmark
 torch.backends.cudnn.benchmark = True
@@ -41,7 +42,7 @@ train_loader, val_loader, test_loader, class_dict = get_dataloaders(pin_memory=T
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 num_classes = len(train_dataset.class_dict)
-model = UNet(in_channels=3, num_classes=num_classes).to(device)
+model = UNetKernelSize(in_channels=3, num_classes=num_classes, kernel_size = 3).to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
