@@ -15,6 +15,7 @@ duitu_root = os.path.abspath(os.path.join(script_dir, ".."))
 sys.path.append(duitu_root)
 from models.Unet import UNet
 from scripts.dataloader import get_dataloaders
+from models.UNetKernelSize import UNetKernelSize
 
 # Enable cuDNN benchmark
 torch.backends.cudnn.benchmark = True
@@ -41,7 +42,7 @@ train_loader, val_loader, test_loader, class_dict = get_dataloaders(pin_memory=T
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 num_classes = len(train_dataset.class_dict)
-model = UNet(in_channels=3, num_classes=num_classes).to(device)
+model = UNetKernelSize(in_channels=3, num_classes=num_classes, kernel_size = 3).to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -60,7 +61,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
                               bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} batches | Elapsed: {elapsed} | Remaining: {remaining}")
             for images, masks in train_loop:
                 images = images.to(device, non_blocking=True)
-                masks = masks.to(device, non_blocking=True).float()
+                masks = masks.to(device, non_blocking=True).long()
 
                 optimizer.zero_grad(set_to_none=True)
 
@@ -81,7 +82,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device, epochs=
                                 bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} batches | Elapsed: {elapsed} | Remaining: {remaining}")
                 for images, masks in val_loop:
                     images = images.to(device, non_blocking=True)
-                    masks = masks.to(device, non_blocking=True).float()
+                    masks = masks.to(device, non_blocking=True).long()
 
                     with torch.amp.autocast('cuda'):
                         outputs = model(images)
@@ -115,7 +116,7 @@ if testing:
         print("Image shape:", test_loader.dataset[i][0].shape)
         print("Mask shape:", test_loader.dataset[i][1].shape)
         model.to(device)  # Ensure the model is on the correct device
-        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.float))
+        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.long))
 
         # Set the most likely class for each pixel
         predicted_mask = torch.argmax(y_pred, dim=1).squeeze(0).cpu().detach().numpy()
