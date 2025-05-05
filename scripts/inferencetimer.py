@@ -12,6 +12,7 @@ from scripts.dataloader import get_dataloaders
 from tqdm import tqdm
 from scipy import stats
 from scripts.pruning import find_best_pruning
+import numpy as np
 
 #import cross_entropy_loss
 
@@ -101,7 +102,7 @@ if __name__ == "__main__":
 
     print("Number of images:", len(images_mask))
     experiment(model, images_mask)
-    pruning_amounts = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+    pruning_amounts = [0.01, 0.05]
     all_amounts, all_losses, all_models = find_best_pruning(model, images_mask, pruning_amounts)
 
     best_index = np.argmin(all_losses)
