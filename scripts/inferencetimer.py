@@ -7,15 +7,18 @@ data_dir = os.path.join(script_dir, '../data')
 duitu_root = os.path.abspath(os.path.join(script_dir, ".."))
 sys.path.append(duitu_root)
 from models.Unet import UNet
+from models.UNetKernelSize import UNetKernelSize
 from scripts.dataloader import get_dataloaders
 from tqdm import tqdm
 from scipy import stats
+from scripts.pruning import find_best_pruning
 
 #import cross_entropy_loss
 
 from torch import nn
 criterion = nn.CrossEntropyLoss()
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def load_model(model, path):
 
     weight_dict = torch.load(path, map_location='cpu')
@@ -46,27 +49,28 @@ def experiment(model, test_images, quantized=False):
             #dim is [1, 1, 3, 256, 256] i want just [3, 256, 256]
             input = input.squeeze(0)
             #dim is [1, 32, 256, 256] i want just [32, 256, 256]
-            output = output.squeeze(0)
+            output = output.long()
+            if output.ndim == 4 and output.shape[1] == 1:
+                output = output.squeeze(1) 
             # Ensure input has the correct dimensions for the model
             if quantized:
                 model = model.to(device).half()
                 input = input.to(device).half()
                 output = output.to(device).half()
-            print("input shape", input.shape)
             y_pred, elapsed_time = infer(model, input, device)
             total_time += elapsed_time           
             outputs.append(y_pred)
             timers.append(elapsed_time)
             # Ensure y_pred and output have the same dimensions
-            loss = criterion(y_pred.squeeze(0), output)
+            loss = criterion(y_pred, output)
             total_loss += loss.item()
     avg_time_per_sample = total_time / len(test_images)
-    avg_time_per_sample = total_time / len(images_mask)
+    avg_time_per_sample = total_time / len(test_images)
 
     print(f"Average time per sample: {avg_time_per_sample:.4f} seconds")
     print(f"Average loss: {total_loss / len(test_images):.4f}")
         
-    avg_time_per_sample = total_time / len(images_mask) 
+    avg_time_per_sample = total_time / len(test_images) 
  
     return avg_time_per_sample, total_loss / len(test_images), timers
 
@@ -83,21 +87,31 @@ def t_test(timer1, timer2):
 
 
 if __name__ == "__main__":
-    _ , _, test_loader, class_dict = get_dataloaders(data_dir, batch_size=1)
+    _, _, test_loader, class_dict = get_dataloaders(batch_size=1)
+    print("Number of classes:", len(class_dict))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = UNet(in_channels=3, num_classes=32).to(device)
-    model = load_model(model, os.path.join(script_dir, '../playground/unet_model.pth'))
+    model = UNetKernelSize(in_channels=3, num_classes=32, kernel_size=3).to(device)  
+    model = load_model(model, os.path.join(script_dir, '../playground/unet_model_reduced_classes.pth'))
 
-    #for testing batch size 1 Get out 100 images
     images_mask = []
     for i, (input, output) in tqdm(enumerate(test_loader), total=100):
-        if i == 1:
+        if i == 100:
             break
         images_mask.append((input, output))
+
     print("Number of images:", len(images_mask))
     experiment(model, images_mask)
-    print("running quantized model")
-    experiment(model, images_mask, quantized=True)
+    pruning_amounts = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+    all_amounts, all_losses, all_models = find_best_pruning(model, images_mask, pruning_amounts)
 
+    best_index = np.argmin(all_losses)
+    best_model = all_models[best_index]
+    best_amount = all_amounts[best_index]
+    best_loss = all_losses[best_index]
 
+    print(f"\n✅ Best pruning amount: {best_amount:.2f}")
+    print(f"📉 Best validation loss: {best_loss:.4f}")
 
+    # Run experiment on best pruned model
+    print("\n🔍 Running experiment on best pruned model...")
+    experiment(best_model, images_mask)

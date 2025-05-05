@@ -63,7 +63,7 @@ class DownSample(nn.Module):
         return down, p
     
 class UNetKernelSize(nn.Module):
-    def __init__(self, in_channels, num_classes, kernel_size=5):
+    def __init__(self, in_channels, num_classes, kernel_size=3):
         super().__init__()
         self.down_convolution_1 = DownSample(in_channels, 64, kernel_size=kernel_size)
         self.down_convolution_2 = DownSample(64, 128, kernel_size=kernel_size)

@@ -105,7 +105,7 @@ def save_model(model, path):
     print(f"Model saved to {path}")
 save_model_path = os.path.join(script_dir, 'unet_model_reduced_classes.pth')
 
-testing = False
+testing = True
 if testing:
     print(device)
     model.load_state_dict(torch.load(save_model_path, map_location=device))
@@ -116,16 +116,19 @@ if testing:
         print("Image shape:", test_loader.dataset[i][0].shape)
         print("Mask shape:", test_loader.dataset[i][1].shape)
         model.to(device)  # Ensure the model is on the correct device
-        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.long))
+        y_pred = model(test_loader.dataset[i][0].unsqueeze(0).to(device, dtype=torch.float))
 
         # Set the most likely class for each pixel
-        predicted_mask = torch.argmax(y_pred, dim=1).squeeze(0).cpu().detach().numpy()
+        image_tensor = test_loader.dataset[i][0]
+        label_tensor = test_loader.dataset[i][1]
 
-        # Convert predicted mask to RGB
+        model_input = image_tensor.unsqueeze(0).to(device)  # [1, 3, H, W]
+        y_pred = model(model_input)
+
+        predicted_mask = torch.argmax(y_pred, dim=1).squeeze(0).cpu().numpy()  # [H, W]
+        ground_truth_mask = label_tensor.cpu().numpy()  # [H, W]
+
         rgb_predicted_mask = train_dataset.class_id_to_rgb(predicted_mask)
-
-        # Get the ground truth mask
-        ground_truth_mask = torch.argmax(test_loader.dataset[i][1], dim=0).cpu().detach().numpy()
         rgb_ground_truth_mask = train_dataset.class_id_to_rgb(ground_truth_mask)
 
         # Print shapes for debugging
@@ -133,6 +136,7 @@ if testing:
         print("RGB Predicted mask shape:", rgb_predicted_mask.shape)
         print("Ground truth mask shape:", ground_truth_mask.shape)
         print("RGB Ground truth mask shape:", rgb_ground_truth_mask.shape)
+        print(len(train_dataset.class_dict))
 
         # Display the images
         import matplotlib.pyplot as plt
