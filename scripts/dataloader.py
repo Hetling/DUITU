@@ -5,65 +5,69 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import torch.nn.functional as F
+import numpy as np
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, '../data')
 
-import numpy as np
+import numpy as npz
 
 class CustomImageDataset(Dataset):
     def __init__(self, images_dir, labels_dir, class_dict_csv, transform=None):
-        """
-        Args:
-            images_dir (str): Directory with all the color images (dashcam footage).
-            labels_dir (str): Directory with all the label images (segmentation masks).
-            class_dict_csv (str): Path to the CSV file containing class mappings (RGB -> class_id).
-            transform (callable, optional): Optional transform to be applied on a sample.
-        """
         self.images_dir = images_dir
         self.labels_dir = labels_dir
         self.transform = transform
 
-        # Load class mappings from CSV
+        # Load class mappings
         self.class_dict = pd.read_csv(class_dict_csv)
-        self.class_mapping = {tuple(map(int, row[["r", "g", "b"]])): idx for idx, row in self.class_dict.iterrows()}
-        
-        # Get all image filenames (assuming they are png files)
-        self.image_filenames = [f for f in os.listdir(images_dir) if f.endswith('.png')]
-    
+        self.class_names = sorted(self.class_dict["name"].unique())
+        self.class_to_id = {name: idx for idx, name in enumerate(self.class_names)}
+
+        # Build RGB to class ID map
+        self.class_mapping = {}
+        for _, row in self.class_dict.iterrows():
+            rgb = tuple(map(int, (row["r"], row["g"], row["b"])))
+            self.class_mapping[rgb] = self.class_to_id[row["name"]]
+
+        self.num_classes = len(self.class_names)
+        self.image_filenames = [f for f in os.listdir(images_dir) if f.endswith(".png")]
+
     def __len__(self):
         return len(self.image_filenames)
 
     def __getitem__(self, idx):
-        # Get the image filename and label filename
         image_filename = self.image_filenames[idx]
         image_path = os.path.join(self.images_dir, image_filename)
-        label_path = os.path.join(self.labels_dir, image_filename.replace('.png', '_L.png'))
+        label_path = os.path.join(self.labels_dir, image_filename.replace(".png", "_L.png"))
 
-        # Open the image and label image
-        image = Image.open(image_path).convert('RGB')
-        label = Image.open(label_path).convert('RGB')  # RGB label image
-
-        # Convert the label image to class IDs
-        label = np.array(label)  # Convert label to numpy array
+        image = Image.open(image_path).convert("RGB")
+        label = Image.open(label_path).convert("RGB")
+        label = np.array(label)
         label = self._rgb_to_class_id(label)
-
-        # Convert the label back to a PIL image (needed for transforms)
         label = Image.fromarray(label)
-        
 
-        # Apply the transform (resize, ToTensor, etc.) if specified
         if self.transform:
             image = self.transform(image)
             label = self.transform(label)
-            
-        label = label.squeeze(0).long()  # shape: [H, W]
-        label = F.one_hot(label, num_classes=len(self.class_mapping.keys()))  # shape: [H, W, num_classes]
-        label = label.permute(2, 0, 1).float()  # shape: [num_classes, H, W]
-        
-        
-        
+
+        label = label.squeeze(0).long()
+
+
         return image, label
+
+    def _rgb_to_class_id(self, rgb_array):
+        class_id_map = np.zeros(rgb_array.shape[:2], dtype=np.int32)
+        for rgb, class_id in self.class_mapping.items():
+            mask = np.all(rgb_array == rgb, axis=-1)
+            class_id_map[mask] = int(class_id)
+        return class_id_map
+
+    def _class_id_to_rgb(self, class_id_array):
+        rgb_array = np.zeros((*class_id_array.shape, 3), dtype=np.uint8)
+        for rgb, class_id in self.class_mapping.items():
+            mask = class_id_array == class_id
+            rgb_array[mask] = rgb
+        return rgb_array
 
     def _rgb_to_class_id(self, rgb_array):
         """
@@ -91,7 +95,7 @@ class CustomImageDataset(Dataset):
 
         return rgb_array
 
-def get_dataloaders(datadir, batch_size=4, pin_memory=True):
+def get_dataloaders(batch_size=4, pin_memory=True):
 
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
@@ -101,21 +105,21 @@ def get_dataloaders(datadir, batch_size=4, pin_memory=True):
     train_dataset = CustomImageDataset(
         images_dir=os.path.join(data_dir, 'train'),
         labels_dir=os.path.join(data_dir, 'train_labels'),
-        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        class_dict_csv=os.path.join(data_dir, 'reduced_dict.csv'),
         transform=transform
     )
 
     val_dataset = CustomImageDataset(
         images_dir=os.path.join(data_dir, 'val'),
         labels_dir=os.path.join(data_dir, 'val_labels'),
-        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        class_dict_csv=os.path.join(data_dir, 'reduced_dict.csv'),
         transform=transform
     )
 
     test_dataset = CustomImageDataset(
         images_dir=os.path.join(data_dir, 'test'),
         labels_dir=os.path.join(data_dir, 'test_labels'),
-        class_dict_csv=os.path.join(data_dir, 'class_dict.csv'),
+        class_dict_csv=os.path.join(data_dir, 'reduced_dict.csv'),
         transform=transform
     )
 
@@ -140,7 +144,7 @@ if __name__ == "__main__":
     # Show an example image and its label
     print('Showing an example image and its label...')
     x,y = next(iter(train_loader))
-    show_image_and_label(x[0],y[0], 17)
+    show_image_and_label(x[0],y[0], 3)
     #id of left most corner pixel
     print('left most corner pixel id:', y[0][0][0][0])
     #print the name of the class
