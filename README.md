@@ -5,9 +5,13 @@
 This project focuses on accelerating U-Net-based image segmentation on the CamVid dataset to achieve real-time performance (≥30 FPS) using pruning. The pruned model reduces computational overhead while maintaining competitive accuracy, making it suitable for autonomous driving systems.
 
 Key Features:
+
 ✅ U-Net variants with configurable kernel sizes and upscaling.
+
 ✅ Magnitude-based pruning for model compression.
+
 ✅ Inference time benchmarking scripts.
+
 ✅ Pre-trained models (pruned and quantized).
 
 📂 Repository Structure
