@@ -68,8 +68,6 @@ def experiment(model, test_images, quantized=False):
     avg_time_per_sample = total_time / len(test_images)
     avg_time_per_sample = total_time / len(test_images)
 
-    print(f"Average time per sample: {avg_time_per_sample:.4f} seconds")
-    print(f"Average loss: {total_loss / len(test_images):.4f}")
         
     avg_time_per_sample = total_time / len(test_images) 
  
