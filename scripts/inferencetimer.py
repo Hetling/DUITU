@@ -102,13 +102,19 @@ if __name__ == "__main__":
 
     print("Number of images:", len(images_mask))
     experiment(model, images_mask)
-    pruning_amounts = [0.01, 0.05]
+    pruning_amounts = [0.01,0.025,0.05,0.07,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3,0.325,0.35,0.375,0.4,0.425,0.45,0.475,0.5]
     all_amounts, all_losses, all_models = find_best_pruning(model, images_mask, pruning_amounts)
 
     best_index = np.argmin(all_losses)
     best_model = all_models[best_index]
     best_amount = all_amounts[best_index]
     best_loss = all_losses[best_index]
+    
+    # save all_models all_amounts and all_losses in a pickle file
+    import pickle
+    with open(os.path.join(script_dir, 'pruning_results.pkl'), 'wb') as f:
+        pickle.dump((all_models, all_amounts, all_losses), f)
+        
 
     print(f"\n✅ Best pruning amount: {best_amount:.2f}")
     print(f"📉 Best validation loss: {best_loss:.4f}")
