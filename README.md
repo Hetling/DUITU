@@ -1,3 +1,6 @@
+By Erling Amundsen and Christian Hetling
+
+See jupyter notebook for key experiments & results
 ## Real-Time Image Segmentation on CamVid via U-Net Pruning
 #### Optimizing inference speed for autonomous driving applications using pruning techniques.
 
@@ -67,3 +70,7 @@ Outputs inference benchmark.
 
 ## 📖 References
 CamVid Dataset
+
+U-Net Paper
+
+PyTorch Pruning Tutorial
