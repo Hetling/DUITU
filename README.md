@@ -67,7 +67,3 @@ Outputs inference benchmark.
 
 ## 📖 References
 CamVid Dataset
-
-U-Net Paper
-
-PyTorch Pruning Tutorial
