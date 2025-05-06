@@ -2,13 +2,13 @@
 #### Optimizing inference speed for autonomous driving applications using pruning techniques.
 
 ### 📌 Overview
-This project focuses on accelerating U-Net-based image segmentation on the CamVid dataset to achieve real-time performance (≥30 FPS) using pruning. The pruned model reduces computational overhead while maintaining competitive accuracy, making it suitable for autonomous driving systems.
+This project focuses on accelerating U-Net-based image segmentation on the CamVid dataset using pruning. The pruned model reduces computational overhead while maintaining accuracy, making it suitable for autonomous driving systems.
 
 Key Features:
 
-✅ U-Net variants with configurable kernel sizes and upscaling.
+✅ U-Net variants with different kernel sizes and upscaling.
 
-✅ Magnitude-based pruning for model compression.
+✅ Pruning techniques to reduce model size and improve inference speed.
 
 ✅ Inference time benchmarking scripts.
 
@@ -40,37 +40,28 @@ Key Features:
 
 ## 🚀 Quick Start
 1. Install Dependencies
-bash
+```bash
 pip install -r requirements.txt
+```
 1. Train U-Net
 Train the baseline model:
 
 ```bash
-python scripts/trainUnet.py --data_dir ./data --epochs 50 --save_path ./scripts/unet_model.pth
+python scripts/trainUnet.py 
 ```
 3. Prune the Model
 Run iterative pruning (example):
 
 ```python
-from scripts.prune import prune_unet
-prune_unet(
-    model_path="./scripts/unet_model.pth",
-    target_sparsity=0.3,  # Remove 30% of filters
-    save_path="./scripts/pruned_unet.pth"
-)
+from scripts.prune import structured_filter_prune
+structured_filter_prune(model_copy, amount=amount)
 ```
 4. Benchmark Inference
 ```bash
-python scripts/inferencetimer.py --model_path ./scripts/pruned_unet.pth --data_dir ./data/val
+python scripts/inferencetimer.py
 ```
-Outputs FPS and mIoU metrics.
+Outputs inference benchmark.
 
-## 🔧 Key Scripts
-Script	Purpose
-trainUnet.py	Train U-Net on CamVid.
-inferencetimer.py	Measure inference speed (FPS) and accuracy.
-quantizeUnet.py	Apply 8-bit quantization for further speedup.
-visualisations.py	Generate segmentation masks overlays.
 ## 📊 Results
 Model	mIoU (%)	Inference Time (ms)	FPS
 Baseline U-Net	75.0	20	50
