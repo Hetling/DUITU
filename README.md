@@ -63,11 +63,7 @@ python scripts/inferencetimer.py
 Outputs inference benchmark.
 
 ## 📊 Results
-Model	mIoU (%)	Inference Time (ms)	FPS
-Baseline U-Net	75.0	20	50
-Pruned U-Net	72.3	10	100
-Quantized U-Net	71.8	8	125
-Pruning achieves a 2× speedup with minimal accuracy drop.
+
 
 ## 📖 References
 CamVid Dataset
